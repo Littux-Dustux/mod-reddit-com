@@ -76,18 +76,35 @@
 	</script>
 	<div id="container">
 		<div class="App">
-			<div
-				style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh;">
+			<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80vh;">
 				<div class="ThreadListing__pending" style="text-align: center;">
 					<div tabindex="0"></div>
 					<div class="Loading icon icon-refresh" style="font-size: xxx-large;"></div>
-					<div class="StyledHtml" style="display: inline-block; font-size: xxx-large; padding-left: 0.5em;">
-						Please wait</div>
+					<div class="StyledHtml" style="display: inline-block; font-size: xxx-large; padding-left: 0.5em;">Please wait</div>
 				</div>
 				<div class="ThreadListing__pending">
 					<div tabindex="1"></div>
-					<div id="loadingStatus" class="ThreadListing__pendingText">Waiting for event from userscript...
-					</div>
+					<div id="loadingStatus" class="ThreadListing__pendingText">Waiting for event from userscript...</div>
+				</div>
+				<div class="StyledHtml">
+					<table><tbody>
+						<tr>
+							<td><code>/api/mod/converstions</code></td>
+							<td><div id="apiStatus-conv" class="Loading icon icon-refresh"></div></td>
+						</tr>
+						<tr>
+							<td><code>/api/v1/me</code></td>
+							<td><div id="apiStatus-me" class="Loading icon icon-refresh"></div></td>
+						</tr>
+						<tr>
+							<td><code>/api/mod/conversations/subreddits</code></td>
+							<td><div id="apiStatus-subs" class="Loading icon icon-refresh"></div></td>
+						</tr>
+						<tr>
+							<td><code>/api/mod/conversations/unread/count</code></td>
+							<td><div id="apiStatus-count" class="Loading icon icon-refresh"></div></td>
+						</tr>
+					</tbody></table>
 				</div>
 			</div>
 		</div>
@@ -235,6 +252,11 @@
 				console.log(message);
 				statusEl.textContent = message;
 			};
+
+			const setAPILoaded = (id, success = true) => {
+				const el = document.getElementById("apiStatus-"+id);
+				if (el) el.className = success ? "icon icon-checkmark" : "icon icon-error";
+			}
 
 			logStatus("Fetching data to hydrate window.___r object...");
 
@@ -400,6 +422,7 @@
 					.then(({ conversations = null, messages = null, user = null, conversation = null, modActions = null }) => {
 						if (!(conversations || messages || user || conversation || modActions)) {
 							throwError("no data returned by API");
+							setAPILoaded('conv', false);
 						}
 
 						if (conversations) {
@@ -425,8 +448,9 @@
 						if (modActions) {
 							___r.modActions = modActions;
 						}
-						logStatus("Loaded /api/mod/conversations");
-					}),
+						// logStatus("Loaded /api/mod/conversations");
+						setAPILoaded("conv");
+					}).catch(e => { setAPILoaded('conv', false); throwError(e.message); }),
 
 				getJSON("/api/mod/conversations/subreddits")
 					.then(({ subreddits }) => {
@@ -439,8 +463,9 @@
 							subredditNameIdMap[subreddits[id].name] = id;
 						}
 						___r.communities.selected.idList = subredditIds;
-						logStatus("Loaded /api/mod/conversations/subreddits");
-					}),
+						// logStatus("Loaded /api/mod/conversations/subreddits");
+						setAPILoaded("subs");
+					}).catch(e => { setAPILoaded('subs', false); throwError(e.message); }),
 
 				getJSON("/api/v1/me")
 					.then(({ id, name, is_mod: isMod, is_employee: isEmployee, over_18, icon_img: iconUrl }) => {
@@ -449,16 +474,18 @@
 							name, isEmployee, isMod, iconUrl,
 							hideNsfw: !over_18
 						});
-						logStatus("Loaded /api/v1/me");
-					}),
+						// logStatus("Loaded /api/v1/me");
+						setAPILoaded("me");
+					}).catch(e => { setAPILoaded('me', false); throwError(e.message); }),
 
 				getJSON("/api/mod/conversations/unread/count")
 					.then((counts) => {
 						for (const [inboxType, count] of Object.entries(counts)) {
 							___r.mail[inboxType].count = count;
 						}
-						logStatus("Loaded /api/mod/conversations/unread/count")
-					})
+						// logStatus("Loaded /api/mod/conversations/unread/count")
+						setAPILoaded("count");
+					}).catch(e => { setAPILoaded('count', false); throwError(e.message); })
 			]).then(() => {
 				logStatus("Loaded all API data! Initializing React client...");
 				addScript("https://www.redditstatic.com/modmail/runtime~Modmail.741ddec20aaf5c2ab9f5.js");
@@ -476,7 +503,7 @@
 
 					setTimeout(() => clearInterval(timer), 5000);
 				};
-			});
+			}).catch(e => throwError(e));
 
 			function addScript(url) {
 				const script = document.createElement('script');
@@ -518,6 +545,7 @@
 
 			const dummyGqlResponse = JSON.stringify({
 				data: {
+				/*
 					subredditInfoById: {
 						modSavedResponses: {
 							general: [],
@@ -533,10 +561,15 @@
 								}
 							}
 						}
-					}, // no idea why it doesn't read the subredditKarma
+					},
+				*/
 					redditorsInfoByIds: [{
 						"__typename": "Redditor",
 						"snoovatarIcon": "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png", // "https://i.redd.it/gmzde26jqmgg1.png", // "https://www.redditstatic.com/youbrokeit1.png",
+						created: 0,
+						icon: "https://www.redditstatic.com/avatars/defaults/v2/avatar_default_1.png",
+						isNsfw: false,
+						profileBanner: "https://www.redditstatic.com/desktop2x/img/leaderboard/banner-background.png",
 						profile: {
 							isNsfw: false,
 							styles: {
@@ -555,6 +588,8 @@
 							"fromAwardsGiven": 69
 						},
 						"isGold": true,
+						
+						isGilded: true,
 						"trophies": [ /*
 							{
 								"__typename": "Trophy",
@@ -579,7 +614,16 @@
 								"staticIcon": "https://www.redditstatic.com/gold/awards/icon/gold_512.png",
 								"icon": "https://www.redditstatic.com/gold/awards/icon/gold_512.png"
 							}
-						*/ ]
+						*/ ],
+						awardedLastMonth: {
+							topAward: {
+								__typename: "Awarding",
+								name: "Silver",
+								description: "A shiny medal",
+								staticIcon: { url: "https://www.redditstatic.com/awards/awards_400/silver.png" },
+								icon: { url: "https://www.redditstatic.com/awards/awards_400/silver.png" }
+							}
+						}
 					}],
 					/*
 					{
@@ -637,12 +681,13 @@
 			};
 
 			const idMap = {
-			/*	"f1e1e31a0a45": {
-					operationName: "", // old: RedditorsInfoByIds
+				"f1e1e31a0a45": {
+					operationName: "<not implemented>", // old: RedditorsInfoByIds
 					async getData(variables) {
-						throw Error("not implemented")
+						console.warn("RedditorsInfoByIds hasn't been migrated to gql-fed. Returning dummy data.");
+						return dummyGqlResponse;
 					}
-				}, */
+				},
 				"14b7366f7468": {
 					operationName: "GetSavedResponses", // old: GetSavedResponses
 					sha256Hash: "19afbcb3f5112b906f7959b3a635615851fc76cc061ca9c3acd84d613f4bd53e"
@@ -675,7 +720,12 @@
 				},
 				"fa09b6709673": {
 					operationName: "GetModUserLogsCounts", // old: GetTotalModNoteCount
-					sha256Hash: "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6"
+					// sha256Hash: "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6",
+					async getData(variables) {
+						const { subredditInfoById } = await gqlFetch("GetModUserLogsCounts", "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6", variables);
+						delete subredditInfoById["__typename"];
+						return JSON.stringify({ data: { subredditInfoById }});
+					}
 				}
 			};
 
@@ -856,5 +906,4 @@
 		})
 	</script>
 </body>
-
 </html>
