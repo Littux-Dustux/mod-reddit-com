@@ -681,12 +681,16 @@
 			};
 
 			const idMap = {
-				"f1e1e31a0a45": {
-					operationName: "<not implemented>", // old: RedditorsInfoByIds
+				"f1e1e31a0a45": { // Thank you https://www.reddit.com/user/RVL-003/
+					operationName: "GetRedditUsersByIds", // old: RedditorsInfoByIds
+					sha256Hash: "c4332a3bb82908fc1383b8e44132c2e12e2104f8cf4256f09df96fdf110a6a1f",
+					extraVars: { includePremiumAvatarTreatment: false }
+					/*
 					async getData(variables) {
 						console.warn("RedditorsInfoByIds hasn't been migrated to gql-fed. Returning dummy data.");
 						return dummyGqlResponse;
 					}
+					*/
 				},
 				"14b7366f7468": {
 					operationName: "GetSavedResponses", // old: GetSavedResponses
@@ -705,9 +709,18 @@
 					}
 				},
 				"3100a52e1cad": {
-					operationName: "GetModUserLogs", // old: GetModUserNotes
-					sha256Hash: "a28dccb3fbc22447bc1555aaf67e2280de261027f0397b0ef7c999639e812796",
-					extraVars: modNoteVars
+					// operationName: "GetModUserLogs", // old: GetModUserNotes
+					// sha256Hash: "a28dccb3fbc22447bc1555aaf67e2280de261027f0397b0ef7c999639e812796",
+					// extraVars: modNoteVars
+					operationName: "GetModUserNotes",
+					async getData({ subredditId, userId, ...otherVariables }) {
+						const variables = {
+							subredditID: subredditId,
+							userID: userId,
+							...otherVariables
+						}
+						return await gqlFetch("GetModUserNotes", "9e56625bc7cad25002dbc418aa878144356cccbd2cd7c6eb64e4ab30f9146f41", variables, false);
+					}
 				},
 				"4a81e80bc4df": {
 					operationName: "CreateModUserNote", // old: CreateModUserNote
@@ -720,12 +733,14 @@
 				},
 				"fa09b6709673": {
 					operationName: "GetModUserLogsCounts", // old: GetTotalModNoteCount
-					// sha256Hash: "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6",
+					sha256Hash: "192178c8b10d36df0e9a1c0787bd9f873ff60c0935de7e3b5557c707a21919a2", // "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6",
+					/*
 					async getData(variables) {
 						const { subredditInfoById } = await gqlFetch("GetModUserLogsCounts", "0b218eeab977b9178243552e831592d20ea1c59e72327867182faff65d1deba6", variables);
 						delete subredditInfoById["__typename"];
 						return JSON.stringify({ data: { subredditInfoById }});
 					}
+					*/
 				}
 			};
 
